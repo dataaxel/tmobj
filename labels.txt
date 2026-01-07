@@ -1,0 +1,3 @@
+0 Katt
+1 Hund
+2 Annat
