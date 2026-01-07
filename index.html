@@ -3,20 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>tmobj – Objektigenkänning</title>
+  <title>Ver 04 – Objektigenkänning</title>
 
-  <!-- Version 03 - Graph-objekt 18.38-->
-  <!-- TensorFlow.js -->
+  <!-- TFJS (GraphModel stöds) -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 
   <style>
     :root { --pad: 14px; --radius: 16px; }
-    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#0b0f17; color:#fff; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #0b0f17;
+      color: #fff;
+    }
     .wrap { height: 100svh; display: grid; grid-template-rows: 1fr auto; }
-    .stage { position: relative; overflow: hidden; background:#000; border-bottom-left-radius:24px; border-bottom-right-radius:24px; }
-    video, canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-
-    .hud { position:absolute; left:var(--pad); right:var(--pad); top:var(--pad); display:grid; gap:10px; pointer-events:none; }
+    .stage {
+      position: relative; overflow: hidden; background: #000;
+      border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
+    }
+    video, canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    .hud {
+      position: absolute; left: var(--pad); right: var(--pad); top: var(--pad);
+      display: grid; gap: 10px;
+      pointer-events: none;
+    }
     .card {
       backdrop-filter: blur(10px);
       background: rgba(0,0,0,0.35);
@@ -27,19 +41,54 @@
     }
     .title { font-size: 14px; opacity: 0.9; margin-bottom: 4px; }
     .big { font-size: 22px; font-weight: 750; line-height: 1.2; }
-    .row { display:flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; opacity: 0.92; }
-    .bar { height:10px; border-radius:999px; background: rgba(255,255,255,0.12); overflow:hidden; margin-top:10px; }
-    .bar > div { height:100%; width:0%; background: linear-gradient(90deg,#37d67a,#00c2ff); border-radius:999px; transition: width 120ms linear; }
-    .mono { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .row {
+      display: flex; justify-content: space-between; gap: 10px;
+      margin-top: 8px; font-size: 13px; opacity: 0.92;
+    }
+    .bar {
+      height: 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden; margin-top: 10px;
+    }
+    .bar > div {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #37d67a, #00c2ff);
+      border-radius: 999px;
+      transition: width 120ms linear;
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-    .bottom { padding: var(--pad); display:grid; gap:10px; background:#0b0f17; }
-    .btns { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    button { border:0; border-radius: 16px; padding: 14px 16px; font-size: 16px; font-weight: 650; background:#1b2436; color:#fff; }
-    button.primary { background:#2563eb; }
-    button:disabled { opacity:0.5; }
+    .bottom { padding: var(--pad); display: grid; gap: 10px; background: #0b0f17; }
+    .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button {
+      border: 0; border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 16px; font-weight: 650;
+      background: #1b2436; color: #fff;
+    }
+    button.primary { background: #2563eb; }
+    button:disabled { opacity: 0.55; }
 
-    .status { font-size: 13px; opacity: 0.8; display:flex; justify-content: space-between; gap:10px; flex-wrap: wrap; }
-    .hint { font-size: 12px; opacity: 0.65; line-height: 1.35; }
+    .statusline {
+      font-size: 13px; opacity: 0.85;
+      display: flex; justify-content: space-between; gap: 10px;
+      flex-wrap: wrap;
+    }
+    .hint {
+      font-size: 12px; opacity: 0.68;
+      line-height: 1.35;
+    }
+    details {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    summary { cursor: pointer; font-size: 13px; opacity: 0.9; }
+    .diag { margin-top: 8px; display: grid; gap: 6px; font-size: 12px; opacity: 0.85; }
+    .kv { display: flex; justify-content: space-between; gap: 10px; }
+    .kv .k { opacity: 0.75; }
+    .kv .v { text-align: right; max-width: 60%; word-break: break-word; }
   </style>
 </head>
 
@@ -76,11 +125,406 @@
         <button id="stopBtn" disabled>Stoppa</button>
       </div>
 
-      <div class="status">
+      <div class="statusline">
         <div>Model: <span class="mono" id="modelState">loading…</span></div>
-        <div>Input: <span class="mono" id="inputInfo">224×224×3</span></div>
+        <div>Input: <span class="mono">224×224×3</span></div>
         <div>Mode: <span class="mono">GraphModel</span></div>
       </div>
 
-      <div class="hint">
-        Tips: iPhone kräver HTTPS (GitHub Pages funkar). Om kamer
+      <div class="hint" id="hint">
+        Tips: iPhone kräver HTTPS och kameratillstånd. Om kameran inte startar, öppna sidan i Safari och tillåt kamera.
+      </div>
+
+      <details>
+        <summary>Diagnostik</summary>
+        <div class="diag">
+          <div class="kv"><div class="k">protocol</div><div class="v mono" id="d_protocol">—</div></div>
+          <div class="kv"><div class="k">secure context</div><div class="v mono" id="d_secure">—</div></div>
+          <div class="kv"><div class="k">getUserMedia</div><div class="v mono" id="d_gum">—</div></div>
+          <div class="kv"><div class="k">UA (kort)</div><div class="v mono" id="d_ua">—</div></div>
+          <div class="kv"><div class="k">iOS</div><div class="v mono" id="d_ios">—</div></div>
+          <div class="kv"><div class="k">Safari</div><div class="v mono" id="d_safari">—</div></div>
+          <div class="kv"><div class="k">WebView (trolig)</div><div class="v mono" id="d_webview">—</div></div>
+          <div class="kv"><div class="k">PWA standalone</div><div class="v mono" id="d_standalone">—</div></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+<script>
+  // =================== KONFIG ===================
+  const MODEL_URL  = "./web_model/model.json";
+  const LABELS_URL = "./labels.txt";
+
+  const INPUT_H = 224;
+  const INPUT_W = 224;
+
+  // Normalisering:
+  // - "zero_to_one": img/255
+  // - "minus_one_to_one": img/127.5 - 1
+  const NORMALIZE_MODE = "zero_to_one";
+
+  // Smoothing (stabilare label)
+  const SMOOTH_N = 6;
+
+  // Optional: tröskel
+  const MIN_CONF_TO_SHOW = 0.00; // t.ex. 0.50 om du vill visa "Osäker" under 50%
+
+  // =================== UI refs ===================
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("overlay");
+  const ctx = canvas.getContext("2d");
+
+  const topLabelEl = document.getElementById("topLabel");
+  const topConfEl  = document.getElementById("topConf");
+  const confBarEl  = document.getElementById("confBar");
+  const top3El     = document.getElementById("top3");
+
+  const statusEl   = document.getElementById("status");
+  const fpsEl      = document.getElementById("fps");
+  const modelState = document.getElementById("modelState");
+  const hintEl     = document.getElementById("hint");
+
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn  = document.getElementById("stopBtn");
+
+  // Diag refs
+  const d_protocol = document.getElementById("d_protocol");
+  const d_secure   = document.getElementById("d_secure");
+  const d_gum      = document.getElementById("d_gum");
+  const d_ua       = document.getElementById("d_ua");
+  const d_ios      = document.getElementById("d_ios");
+  const d_safari   = document.getElementById("d_safari");
+  const d_webview  = document.getElementById("d_webview");
+  const d_standalone = document.getElementById("d_standalone");
+
+  // =================== STATE ===================
+  let model = null;
+  let labels = [];
+  let running = false;
+  let stream = null;
+  let recent = [];
+
+  function setStatus(s) { statusEl.textContent = s; }
+
+  function setHint(s) { hintEl.textContent = s; }
+
+  function uaShort(ua) {
+    // kortare variant så den får plats
+    if (!ua) return "—";
+    return ua.length > 80 ? ua.slice(0, 80) + "…" : ua;
+  }
+
+  function computeEnvFlags() {
+    const ua = navigator.userAgent || "";
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isCriOS = /CriOS/i.test(ua);
+    const isFxiOS = /FxiOS/i.test(ua);
+    const isEdgiOS = /EdgiOS/i.test(ua);
+
+    // iOS Safari brukar innehålla "Safari" men inte CriOS/FxiOS/EdgiOS
+    const isSafari = isIOS && /Safari/i.test(ua) && !isCriOS && !isFxiOS && !isEdgiOS;
+
+    // "Trolig webview" (heuristik): iOS men inte Safari/Chrome/Firefox/Edge
+    // (detta är bara diagnostik, inte ett beslut)
+    const isLikelyWebView = isIOS && !isSafari && !isCriOS && !isFxiOS && !isEdgiOS;
+
+    const isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+                         (navigator.standalone === true);
+
+    return { isIOS, isSafari, isLikelyWebView, isStandalone };
+  }
+
+  function updateDiagnostics() {
+    const flags = computeEnvFlags();
+    d_protocol.textContent = location.protocol;
+    d_secure.textContent = String(window.isSecureContext);
+    d_gum.textContent = String(!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+    d_ua.textContent = uaShort(navigator.userAgent || "");
+    d_ios.textContent = String(flags.isIOS);
+    d_safari.textContent = String(flags.isSafari);
+    d_webview.textContent = String(flags.isLikelyWebView);
+    d_standalone.textContent = String(flags.isStandalone);
+
+    // Hjälptext – men vi antar inte att det är felet.
+    if (!window.isSecureContext) {
+      setHint("Sidan körs inte i secure context. Kamera kräver HTTPS (eller localhost).");
+    } else if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+      setHint("getUserMedia saknas här. Testa att öppna länken i Safari (inte inbäddad vy).");
+    }
+  }
+
+  async function loadLabels() {
+    const r = await fetch(LABELS_URL, { cache: "no-store" });
+    if (!r.ok) throw new Error(`labels.txt kunde inte laddas (HTTP ${r.status}).`);
+    const txt = await r.text();
+    labels = txt.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    if (!labels.length) throw new Error("labels.txt är tom eller kunde inte tolkas.");
+  }
+
+  async function loadModel() {
+    modelState.textContent = "loading…";
+    // GraphModel
+    model = await tf.loadGraphModel(MODEL_URL);
+    modelState.textContent = "ready";
+  }
+
+  function resizeCanvas() {
+    canvas.width  = video.videoWidth || 0;
+    canvas.height = video.videoHeight || 0;
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  function argmax(arr) {
+    let max = -Infinity, idx = -1;
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > max) { max = arr[i]; idx = i; }
+    }
+    return [idx, max];
+  }
+
+  function topK(probs, k=3) {
+    const items = probs.map((p, i) => ({i, p}));
+    items.sort((a,b) => b.p - a.p);
+    return items.slice(0, k);
+  }
+
+  function smoothLabel(label) {
+    recent.push(label);
+    if (recent.length > SMOOTH_N) recent.shift();
+    const counts = {};
+    for (const x of recent) counts[x] = (counts[x] || 0) + 1;
+    return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+  }
+
+  function preprocess(imgTensor) {
+    let x = imgTensor.toFloat();
+    if (NORMALIZE_MODE === "minus_one_to_one") {
+      x = x.div(127.5).sub(1.0);
+    } else {
+      x = x.div(255.0);
+    }
+    return x;
+  }
+
+  function describeGetUserMediaError(e) {
+    const name = e?.name || "Error";
+    const msg = e?.message || String(e);
+
+    // Vanliga iOS/Safari-koder:
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return "Kameratillstånd nekades. Tillåt kamera för webbplatsen i Safari-inställningar och ladda om.";
+    }
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return "Ingen kamera hittades (eller blockerad av enhet/policy).";
+    }
+    if (name === "NotReadableError" || name === "TrackStartError") {
+      return "Kameran är upptagen av annan app eller kunde inte starta. Stäng andra appar som använder kamera och försök igen.";
+    }
+    if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+      return "Kamerakonfigurationen stöds inte. Vi provar fallback-läge.";
+    }
+    if (!window.isSecureContext) {
+      return "Kamera kräver HTTPS (secure context).";
+    }
+    return `${name}: ${msg}`;
+  }
+
+  // =================== ROBUST STARTCAMERA (felsökt) ===================
+  async function startCameraRobust() {
+    updateDiagnostics();
+
+    if (!window.isSecureContext) {
+      throw new Error("Kamera kräver HTTPS (secure context).");
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("getUserMedia saknas i denna webbläsare/miljö.");
+    }
+
+    // Stäng ev. gammal stream innan ny start
+    stopCamera();
+
+    // Flera försök i ordning: environment exact -> environment ideal -> user exact -> any
+    const tries = [
+      { audio: false, video: { facingMode: { exact: "environment" } } },
+      { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { audio: false, video: { facingMode: { exact: "user" } } },
+      { audio: false, video: true }
+    ];
+
+    let lastErr = null;
+
+    for (let i = 0; i < tries.length; i++) {
+      try {
+        setStatus(i === 0 ? "Starting camera…" : "Retry camera…");
+        stream = await navigator.mediaDevices.getUserMedia(tries[i]);
+        video.srcObject = stream;
+
+        // iOS: playsinline+muted finns i HTML, men play() behövs ofta ändå
+        await video.play();
+
+        // Vänta tills metadata finns
+        await new Promise((resolve) => {
+          if (video.readyState >= 2) return resolve();
+          video.onloadedmetadata = () => resolve();
+        });
+
+        resizeCanvas();
+        setStatus("Camera ready");
+        return;
+      } catch (e) {
+        lastErr = e;
+
+        // Om constraints inte matchar, fortsätt med nästa försök.
+        // Men om permission nekas är det meningslöst att fortsätta.
+        const name = e?.name || "";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          throw new Error(describeGetUserMediaError(e));
+        }
+      }
+    }
+
+    throw new Error(describeGetUserMediaError(lastErr));
+  }
+
+  // =================== PREDICT (GraphModel) ===================
+  async function predictFrame() {
+    // Returnerar JS-array probs [numClasses]
+    return tf.tidy(() => {
+      let img = tf.browser.fromPixels(video);                       // [vh, vw, 3] uint8
+      img = tf.image.resizeBilinear(img, [INPUT_H, INPUT_W], true); // [224,224,3]
+      img = preprocess(img);                                        // float32 norm
+      img = img.expandDims(0);                                      // [1,224,224,3]
+
+      const out = model.execute(img);
+
+      // out kan vara Tensor, array eller object.
+      let t = out;
+
+      if (Array.isArray(out)) {
+        t = out[0];
+      } else if (out && typeof out === "object" && typeof out.dataSync !== "function") {
+        // object map: ta första nyckeln
+        const keys = Object.keys(out);
+        t = out[keys[0]];
+      }
+
+      const squeezed = t.squeeze();          // [3]
+      const arr = squeezed.arraySync();      // JS array
+      return arr;
+    });
+  }
+
+  async function loop() {
+    if (!running) return;
+
+    const t0 = performance.now();
+
+    // overlay-ram
+    if (canvas.width && canvas.height) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(canvas.width*0.12, canvas.height*0.22, canvas.width*0.76, canvas.height*0.56);
+    }
+
+    let probs;
+    try {
+      probs = await predictFrame();
+    } catch (e) {
+      setStatus("Predict error");
+      console.error(e);
+      running = false;
+      stopBtn.disabled = true;
+      startBtn.disabled = false;
+      return;
+    }
+
+    const [bestIdx, bestP] = argmax(probs);
+    const rawLabel = labels[bestIdx] ?? `class_${bestIdx}`;
+    const stableLabel = smoothLabel(rawLabel);
+
+    if (bestP < MIN_CONF_TO_SHOW) {
+      topLabelEl.textContent = "Osäker";
+      topConfEl.textContent  = (bestP * 100).toFixed(1) + "%";
+      confBarEl.style.width  = "0%";
+    } else {
+      topLabelEl.textContent = stableLabel;
+      topConfEl.textContent  = (bestP * 100).toFixed(1) + "%";
+      confBarEl.style.width  = Math.max(0, Math.min(100, bestP*100)) + "%";
+    }
+
+    const t3 = topK(probs, 3).map(x => {
+      const name = labels[x.i] ?? `class_${x.i}`;
+      return `${name}:${(x.p*100).toFixed(0)}%`;
+    });
+    top3El.innerHTML = `<div class="mono">${t3[0]||"—"}</div><div class="mono">${t3[1]||"—"}</div><div class="mono">${t3[2]||"—"}</div>`;
+
+    const t1 = performance.now();
+    const fps = 1000 / Math.max(1, (t1 - t0));
+    fpsEl.textContent = fps.toFixed(1);
+
+    requestAnimationFrame(loop);
+  }
+
+  // =================== EVENTS ===================
+  startBtn.addEventListener("click", async () => {
+    try {
+      startBtn.disabled = true;
+      setStatus("Starting…");
+
+      // Ladda model + labels om de inte redan är laddade
+      if (!model) await loadModel();
+      if (!labels.length) await loadLabels();
+
+      // Starta kamera med robust fallback
+      await startCameraRobust();
+
+      running = true;
+      stopBtn.disabled = false;
+      requestAnimationFrame(loop);
+    } catch (e) {
+      console.error(e);
+      setStatus("Error");
+      setHint(String(e?.message || e));
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+
+  stopBtn.addEventListener("click", () => {
+    running = false;
+    stopCamera();
+    stopBtn.disabled = true;
+    startBtn.disabled = false;
+    setStatus("Stopped");
+  });
+
+  // =================== INIT (preload) ===================
+  (async () => {
+    updateDiagnostics();
+    try {
+      await loadModel();
+      await loadLabels();
+      setStatus("Model loaded");
+      setHint("Tryck “Starta kamera”. Om iPhone frågar om kameratillstånd: välj Tillåt.");
+    } catch (e) {
+      console.warn(e);
+      setStatus("Init error");
+      setHint(String(e?.message || e));
+    }
+  })();
+
+  // Om orientation/resize: canvas kan behöva uppdateras
+  window.addEventListener("resize", () => {
+    try { resizeCanvas(); } catch {}
+  });
+</script>
+</body>
+</html>
